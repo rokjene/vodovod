@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Vodovod</title>
+
+<style>
+
+body{
+    font-family: Arial;
+    background:#f5f5f5;
+    padding:30px;
+}
+
+.card{
+    background:white;
+    max-width:500px;
+    margin:auto;
+    padding:25px;
+    border-radius:12px;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+h1{
+    margin-top:0;
+}
+
+.status{
+    font-size:28px;
+    font-weight:bold;
+    margin:20px 0;
+}
+
+.ok{
+    color:green;
+}
+
+.off{
+    color:red;
+}
+
+.item{
+    margin:12px 0;
+    font-size:20px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h1>VODOVOD</h1>
+
+<div id="pump_status" class="status">
+NALAGANJE...
+</div>
+
+<div class="item">
+Danes: <span id="daily_hours">-</span> h
+</div>
+
+<div class="item">
+Pretok: <span id="daily_m3">-</span> m3
+</div>
+
+<div class="item">
+Alarm: <span id="alarm">-</span>
+</div>
+
+<div class="item">
+Zadnji dogodek:
+<br>
+<span id="last_event">-</span>
+</div>
+
+</div>
+
+<script>
+
+const SUPABASE_URL =
+'https://bndblzdwhqxrgxatqrxm.supabase.co';
+
+const SUPABASE_KEY =
+'TVOJ_ANON_KEY';
+
+async function loadData(){
+
+    const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/pump_status?select=*&order=id.desc&limit=1`,
+        {
+            headers:{
+                apikey: SUPABASE_KEY,
+                Authorization: `Bearer ${SUPABASE_KEY}`
+            }
+        }
+    );
+
+    const data = await response.json();
+
+    if(!data.length){
+        return;
+    }
+
+    const d = data[0];
+
+    if(d.pump_running){
+
+        document.getElementById('pump_status').innerHTML =
+            '🟢 Pumpa deluje';
+
+        document.getElementById('pump_status')
+            .className='status ok';
+
+    } else {
+
+        document.getElementById('pump_status').innerHTML =
+            '🔴 Pumpa ne deluje';
+
+        document.getElementById('pump_status')
+            .className='status off';
+    }
+
+    document.getElementById('daily_hours').innerHTML =
+        d.daily_hours;
+
+    document.getElementById('daily_m3').innerHTML =
+        d.daily_m3;
+
+    document.getElementById('alarm').innerHTML =
+        d.alarm ? 'DA' : 'NE';
+
+    document.getElementById('last_event').innerHTML =
+        d.last_event;
+}
+
+loadData();
+
+setInterval(loadData,30000);
+
+</script>
+
+</body>
+</html>
