@@ -1,50 +1,69 @@
 <!DOCTYPE html>
-<html lang="sl"> 
+<html lang="sl">
+
 <head>
 
-<meta charset="UTF-8"> 
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Vodovod test</title>
+<title>Vodovod</title>
 
 <style>
 
 body{
     font-family: Arial;
-    background:#f5f5f5;
-    padding:30px;
+    background:#f3f3f3;
+    padding:20px;
 }
 
 .card{
     background:white;
-    max-width:500px;
+    max-width:700px;
     margin:auto;
     padding:25px;
-    border-radius:12px;
-    box-shadow:0 0 10px rgba(0,0,0,0.1);
+    border-radius:14px;
+    box-shadow:0 0 12px rgba(0,0,0,0.12);
 }
 
 h1{
     margin-top:0;
+    margin-bottom:10px;
 }
 
-.status{
-    font-size:28px;
+.bigstatus{
+    font-size:34px;
     font-weight:bold;
-    margin:20px 0;
+    margin-bottom:10px;
 }
 
 .ok{
     color:green;
 }
 
-.off{
+.alarm{
     color:red;
 }
 
+.offline{
+    color:darkred;
+}
+
+.time{
+    color:#666;
+    margin-bottom:25px;
+}
+
+.section{
+    margin-top:25px;
+}
+
 .item{
-    margin:12px 0;
-    font-size:20px;
+    margin:10px 0;
+    font-size:22px;
+}
+
+.small{
+    font-size:18px;
 }
 
 </style>
@@ -57,26 +76,43 @@ h1{
 
 <h1>VODOVOD</h1>
 
-<div id="pump_status" class="status">
+<div id="main_status" class="bigstatus">
 NALAGANJE...
 </div>
 
+<div id="update_time" class="time">
+-
+</div>
+
+<div class="section">
+
 <div class="item">
-Danes: <span id="daily_hours">-</span> h
+Status črpanja:
+<b id="pump_state">-</b>
 </div>
 
 <div class="item">
-Pretok: <span id="daily_m3">-</span> m3
+Danes:
+<b id="daily_hours">-</b> h
 </div>
 
 <div class="item">
-Alarm: <span id="alarm">-</span>
+Pretok:
+<b id="daily_m3">-</b> m3
 </div>
 
-<div class="item">
+</div>
+
+<div class="section">
+
+<div class="item small">
 Zadnji dogodek:
-<br>
-<span id="last_event">-</span>
+</div>
+
+<div class="item small">
+<b id="last_event">-</b>
+</div>
+
 </div>
 
 </div>
@@ -109,34 +145,74 @@ async function loadData(){
 
     const d = data[0];
 
+    const updateDate = new Date(d.created_at);
+    const now = new Date();
+
+    const diffHours =
+        (now - updateDate) / 1000 / 60 / 60;
+
+    const localTime =
+        updateDate.toLocaleString('sl-SI');
+
+    document.getElementById('update_time').innerHTML =
+        'Posodobljeno: ' + localTime;
+
+    // OFFLINE
+
+    if(diffHours >= 3){
+
+        document.getElementById('main_status')
+            .innerHTML = '🔴 VODOVOD OFFLINE';
+
+        document.getElementById('main_status')
+            .className = 'bigstatus offline';
+
+    }
+
+    // ALARM
+
+    else if(d.alarm){
+
+        document.getElementById('main_status')
+            .innerHTML = '⚠ ALARM';
+
+        document.getElementById('main_status')
+            .className = 'bigstatus alarm';
+
+    }
+
+    // OK
+
+    else{
+
+        document.getElementById('main_status')
+            .innerHTML = '🟢 VODOVOD OK';
+
+        document.getElementById('main_status')
+            .className = 'bigstatus ok';
+    }
+
+    // pump state
+
     if(d.pump_running){
 
-        document.getElementById('pump_status').innerHTML =
-            '🟢 Pumpa deluje';
-
-        document.getElementById('pump_status')
-            .className='status ok';
+        document.getElementById('pump_state')
+            .innerHTML = 'ČRPA';
 
     } else {
 
-        document.getElementById('pump_status').innerHTML =
-            '🔴 Pumpa ne deluje';
-
-        document.getElementById('pump_status')
-            .className='status off';
+        document.getElementById('pump_state')
+            .innerHTML = 'MIRUJE';
     }
 
-    document.getElementById('daily_hours').innerHTML =
-        d.daily_hours;
+    document.getElementById('daily_hours')
+        .innerHTML = d.daily_hours;
 
-    document.getElementById('daily_m3').innerHTML =
-        d.daily_m3;
+    document.getElementById('daily_m3')
+        .innerHTML = d.daily_m3;
 
-    document.getElementById('alarm').innerHTML =
-        d.alarm ? 'DA' : 'NE';
-
-    document.getElementById('last_event').innerHTML =
-        d.last_event;
+    document.getElementById('last_event')
+        .innerHTML = d.last_event;
 }
 
 loadData();
