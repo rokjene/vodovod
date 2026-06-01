@@ -127,6 +127,19 @@ h1{
 
 
 
+.outagerow{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid #e5e5e5;
+    font-size:16px;
+}
+
+.outagerow:last-child{
+    border-bottom:none;
+}
+
 
 
 
@@ -195,7 +208,7 @@ NALAGANJE...
 </div>
 
 <div class="section">
-    <div class="label">Zadnji 3 vklopi</div>
+    <div class="label">Zadnji 4 vklopi</div>
     <div id="last_runs">
         -
     </div>
@@ -204,6 +217,13 @@ NALAGANJE...
 <div class="section">
     <div class="label">Zadnjih 8 zaključenih dni</div>
     <div id="last_days">
+        -
+    </div>
+</div>
+
+<div class="section">
+    <div class="label">Zadnji izpadi</div>
+    <div id="last_outages">
         -
     </div>
 </div>
@@ -533,14 +553,26 @@ if(!days.length){
 
 
 
+// ZADNJI IZPADI
 
+const outages = extra.last_outages || [];
+const outagesBox = document.getElementById('last_outages');
 
+if(!outages.length){
 
+    outagesBox.innerHTML = '<div class="small">Ni zabeleženih izpadov.</div>';
 
+} else {
 
-
-
-
+    outagesBox.innerHTML = outages.map(o => {
+        return `
+            <div class="outagerow">
+                <span>${formatShortRun(o.start, o.end)}</span>
+                <b>${formatDuration(o.duration_sec)}</b>
+            </div>
+        `;
+    }).join('');
+}
 
 
         // ALARMI
