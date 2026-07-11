@@ -87,16 +87,25 @@ h1{
     margin-top:18px;
 }
 
-.run{
+.run,
+.dayrow,
+.outagerow{
     display:flex;
     justify-content:space-between;
     gap:10px;
-    padding:9px 0;
+    padding:8px 0;
     border-bottom:1px solid #e5e5e5;
+    font-size:16px;
+}
+
+.run{
+    padding:9px 0;
     font-size:17px;
 }
 
-.run:last-child{
+.run:last-child,
+.dayrow:last-child,
+.outagerow:last-child{
     border-bottom:none;
 }
 
@@ -111,40 +120,8 @@ h1{
     line-height:1.5;
 }
 
-
-.dayrow{
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    padding:8px 0;
-    border-bottom:1px solid #e5e5e5;
-    font-size:16px;
-}
-
-.dayrow:last-child{
-    border-bottom:none;
-}
-
-
-
-.outagerow{
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    padding:8px 0;
-    border-bottom:1px solid #e5e5e5;
-    font-size:16px;
-}
-
-.outagerow:last-child{
-    border-bottom:none;
-}
-
-
-
-
-
 @media(max-width:600px){
+
     .grid{
         grid-template-columns:1fr;
     }
@@ -157,8 +134,10 @@ h1{
         font-size:20px;
     }
 
-    .run{
-        font-size:16px;
+    .run,
+    .dayrow,
+    .outagerow{
+        font-size:15px;
     }
 }
 
@@ -182,83 +161,59 @@ NALAGANJE...
 
 <div class="grid">
 
-<div class="box">
-    <div class="label">Status črpanja</div>
-    <div id="pump_state" class="value">-</div>
-</div>
-
-<div class="box">
-    <div class="label">Danes</div>
-    <div class="value">
-        <span id="daily_hours">-</span> h =
-        <span id="daily_m3">-</span> m3
+    <div class="box">
+        <div class="label">Status črpanja</div>
+        <div id="pump_state" class="value">-</div>
     </div>
-</div>
 
-<div class="box">
-    <div class="label">Zadnje delovanje</div>
-    <div id="last_run_ago" class="value">-</div>
-</div>
+    <div class="box">
+        <div class="label">Danes</div>
+        <div class="value">
+            <span id="daily_hours">-</span> h =
+            <span id="daily_m3">-</span> m3
+        </div>
+    </div>
 
-<div class="box">
-    <div class="label">Zadnji dogodek</div>
-    <div id="last_event" class="value">-</div>
-</div>
+    <div class="box">
+        <div class="label">Zadnje delovanje</div>
+        <div id="last_run_ago" class="value">-</div>
+    </div>
+
+    <div class="box">
+        <div class="label">Zadnji dogodek</div>
+        <div id="last_event" class="value">-</div>
+    </div>
 
 </div>
 
 <div class="section">
     <div class="label">Zadnji 4 vklopi</div>
-    <div id="last_runs">
-        -
-    </div>
+    <div id="last_runs">-</div>
 </div>
 
 <div class="section">
     <div class="label">Zadnjih 8 zaključenih dni</div>
-    <div id="last_days">
-        -
-    </div>
+    <div id="last_days">-</div>
 </div>
-
-
-
 
 <div class="section">
     <div class="label">Zadnjih 5 zaključenih tednov</div>
-    <div id="last_weeks">
-        -
-    </div>
+    <div id="last_weeks">-</div>
 </div>
 
 <div class="section">
     <div class="label">Zadnjih 13 zaključenih mesecev</div>
-    <div id="last_months">
-        -
-    </div>
+    <div id="last_months">-</div>
 </div>
-    
-
-
-
-
-    
-
-    
 
 <div class="section">
     <div class="label">Zadnji izpadi</div>
-    <div id="last_outages">
-        -
-    </div>
+    <div id="last_outages">-</div>
 </div>
-
 
 <div class="section">
     <div class="label">Alarmi</div>
-    <div id="alarm_list" class="alarm_list">
-        -
-    </div>
+    <div id="alarm_list" class="alarm_list">-</div>
 </div>
 
 </div>
@@ -273,27 +228,35 @@ const SUPABASE_KEY =
 
 const OFFLINE_AFTER_HOURS = 3;
 
+const API_HEADERS = {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`
+};
+
 function pad2(n){
-    return String(n).padStart(2,'0');
+    return String(n).padStart(2, '0');
 }
 
-function formatDateTime(epoch){
-    if(!epoch || epoch <= 0){
-        return '-';
+function safeParseJson(value){
+
+    if(!value){
+        return {};
     }
 
-    const d = new Date(epoch * 1000);
+    if(typeof value === 'object'){
+        return value;
+    }
 
-    return d.toLocaleString('sl-SI', {
-        day:'2-digit',
-        month:'2-digit',
-        year:'numeric',
-        hour:'2-digit',
-        minute:'2-digit'
-    });
+    try{
+        return JSON.parse(value);
+    } catch(error){
+        console.error('Napaka pri branju JSON:', error);
+        return {};
+    }
 }
 
 function formatShortRun(startEpoch, endEpoch){
+
     const s = new Date(startEpoch * 1000);
     const e = new Date(endEpoch * 1000);
 
@@ -329,20 +292,29 @@ function formatShortRun(startEpoch, endEpoch){
             pad2(s.getMonth() + 1) + '.';
     }
 
-    const st = pad2(s.getHours()) + ':' + pad2(s.getMinutes());
-    const et = pad2(e.getHours()) + ':' + pad2(e.getMinutes());
+    const startTime =
+        pad2(s.getHours()) + ':' +
+        pad2(s.getMinutes());
+
+    const endTime =
+        pad2(e.getHours()) + ':' +
+        pad2(e.getMinutes());
 
     if(sameDay){
-        return dayText + ' ' + st + '–' + et;
+        return dayText + ' ' + startTime + '–' + endTime;
     }
 
-    return dayText + ' ' + st + '–' +
+    return dayText + ' ' + startTime + '–' +
         pad2(e.getDate()) + '.' +
-        pad2(e.getMonth() + 1) + '. ' + et;
+        pad2(e.getMonth() + 1) + '. ' +
+        endTime;
 }
 
 function formatDuration(sec){
-    if(!sec || sec < 0){
+
+    sec = Number(sec);
+
+    if(!Number.isFinite(sec) || sec < 0){
         return '0 min';
     }
 
@@ -363,7 +335,10 @@ function formatDuration(sec){
 }
 
 function formatAgo(sec){
-    if(!sec || sec < 0){
+
+    sec = Number(sec);
+
+    if(!Number.isFinite(sec) || sec < 0){
         return '-';
     }
 
@@ -380,191 +355,31 @@ function formatAgo(sec){
     }
 
     const d = Math.floor(h / 24);
+
     return d + ' dni nazaj';
 }
 
-function safeParseReport(report){
-    if(!report){
-        return {};
-    }
-
-    try{
-        return JSON.parse(report);
-    } catch(e){
-        return {};
-    }
-}
-
-async function loadData(){
-
-    try{
-
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/pump_status?select=*&order=id.desc&limit=1`,
-            {
-                headers:{
-                    apikey: SUPABASE_KEY,
-                    Authorization: `Bearer ${SUPABASE_KEY}`
-                }
-            }
-        );
-
-        const data = await response.json();
-
-
-
-const statsResponse = await fetch(
-    `${SUPABASE_URL}/rest/v1/pump_stats?select=*&order=id.desc&limit=1`,
-    {
-        headers:{
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`
-        }
-    }
-);
-
-const statsData = await statsResponse.json();
-
-const stats =
-    statsData.length
-    ? JSON.parse(statsData[0].stats)
-    : {};
-
-
-
-        
-
-        if(!data.length){
-            return;
-        }
-
-        const d = data[0];
-        const extra = safeParseReport(d.report);
-
-        const updateDate = new Date(d.created_at);
-        const now = new Date();
-
-        const diffHours =
-            (now - updateDate) / 1000 / 60 / 60;
-
-        const nowSec = Math.floor(now.getTime() / 1000);
-
-        const noRunWarningSec =
-            extra.no_run_warning_sec || 43200;
-
-        const lastRunEpoch =
-            extra.last_run_epoch || 0;
-
-        const noRunTooLong =
-            !d.pump_running &&
-            lastRunEpoch > 0 &&
-            (nowSec - lastRunEpoch) >= noRunWarningSec;
-
-        document.getElementById('update_time').innerHTML =
-            'Posodobljeno: ' + updateDate.toLocaleString('sl-SI');
-
-        // GLAVNI STATUS
-
-        if(diffHours >= OFFLINE_AFTER_HOURS){
-
-            document.getElementById('main_status')
-                .innerHTML = '🔴 VODOVOD OFFLINE';
-
-            document.getElementById('main_status')
-                .className = 'bigstatus offline';
-
-        } else if(d.alarm){
-
-            document.getElementById('main_status')
-                .innerHTML = '⚠ ALARM';
-
-            document.getElementById('main_status')
-                .className = 'bigstatus alarm';
-
-        } else if(noRunTooLong){
-
-            document.getElementById('main_status')
-                .innerHTML = '🟠 VODOVOD NI OK';
-
-            document.getElementById('main_status')
-                .className = 'bigstatus warn';
-
-        } else {
-
-            document.getElementById('main_status')
-                .innerHTML = '🟢 VODOVOD OK';
-
-            document.getElementById('main_status')
-                .className = 'bigstatus ok';
-        }
-
-        // STANJE PUMPE
-
-        document.getElementById('pump_state').innerHTML =
-            d.pump_running ? 'ČRPA' : 'MIRUJE';
-
-        document.getElementById('daily_hours').innerHTML =
-            Number(d.daily_hours).toFixed(2);
-
-        document.getElementById('daily_m3').innerHTML =
-            Number(d.daily_m3).toFixed(2);
-
-        document.getElementById('last_event').innerHTML =
-            d.last_event || '-';
-
-        if(lastRunEpoch > 0){
-            document.getElementById('last_run_ago').innerHTML =
-                formatAgo(nowSec - lastRunEpoch);
-        } else {
-            document.getElementById('last_run_ago').innerHTML =
-                '-';
-        }
-
-        // ZADNJA 3 DELOVANJA
-
-        const runs = extra.last_runs || [];
-        const runsBox = document.getElementById('last_runs');
-
-        if(!runs.length){
-
-            runsBox.innerHTML = '<div class="small">Ni podatkov.</div>';
-
-        } else {
-
-            runsBox.innerHTML = runs.map(r => {
-                return `
-                    <div class="run">
-                        <span>${formatShortRun(r.start, r.end)}</span>
-                        <b>${formatDuration(r.duration_sec)}</b>
-                    </div>
-                `;
-            }).join('');
-        }
-
-
-// ZADNJIH 8 ZAKLJUČENIH DNI
-
-const days = extra.last_days || [];
-const daysBox = document.getElementById('last_days');
-const flowRate = extra.flow_rate_m3_per_h || 4;
-
 function formatDayDate(dateStr){
-    const parts = dateStr.split('-');
+
+    const parts = String(dateStr).split('-');
 
     if(parts.length !== 3){
         return dateStr;
     }
 
-    const y = Number(parts[0]);
-    const m = Number(parts[1]);
-    const d = Number(parts[2]);
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
 
-    const date = new Date(y, m - 1, d);
+    const date = new Date(year, month - 1, day);
 
     const today = new Date();
 
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
+    const yesterday = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() - 1
+    );
 
     const isYesterday =
         date.getFullYear() === yesterday.getFullYear() &&
@@ -575,93 +390,389 @@ function formatDayDate(dateStr){
         return 'Včeraj';
     }
 
-    return pad2(d) + '.' + pad2(m) + '.';
+    return pad2(day) + '.' + pad2(month) + '.';
 }
 
-if(!days.length){
+function formatMonth(monthKey){
 
-    daysBox.innerHTML = '<div class="small">Ni podatkov.</div>';
+    const parts = String(monthKey).split('-');
 
-} else {
+    if(parts.length !== 2){
+        return monthKey;
+    }
 
-    daysBox.innerHTML = days.map(day => {
-
-        const hours = day.sec / 3600;
-        const m3 = hours * flowRate;
-
-        return `
-            <div class="dayrow">
-                <span>${formatDayDate(day.date)}</span>
-                <b>${hours.toFixed(2)} h = ${m3.toFixed(2)} m3</b>
-            </div>
-        `;
-
-    }).join('');
+    return parts[0] + '.' + parts[1];
 }
 
+function isoWeekMonday(year, week){
 
+    const january4 = new Date(Date.UTC(year, 0, 4));
+    const day = january4.getUTCDay() || 7;
 
-// ZADNJI IZPADI
+    const monday = new Date(january4);
+    monday.setUTCDate(january4.getUTCDate() - day + 1 + (week - 1) * 7);
 
-const outages = extra.last_outages || [];
-const outagesBox = document.getElementById('last_outages');
-
-if(!outages.length){
-
-    outagesBox.innerHTML = '<div class="small">Ni zabeleženih izpadov.</div>';
-
-} else {
-
-    outagesBox.innerHTML = outages.map(o => {
-        return `
-            <div class="outagerow">
-                <span>${formatShortRun(o.start, o.end)}</span>
-                <b>${formatDuration(o.duration_sec)}</b>
-            </div>
-        `;
-    }).join('');
+    return monday;
 }
 
+function formatWeekRange(weekKey){
+
+    const match = String(weekKey).match(/^(\d{4})-W(\d{1,2})$/);
+
+    if(!match){
+        return weekKey;
+    }
+
+    const year = Number(match[1]);
+    const week = Number(match[2]);
+
+    const start = isoWeekMonday(year, week);
+    const end = new Date(start);
+    end.setUTCDate(start.getUTCDate() + 6);
+
+    return (
+        pad2(start.getUTCDate()) + '.' +
+        pad2(start.getUTCMonth() + 1) + '–' +
+        pad2(end.getUTCDate()) + '.' +
+        pad2(end.getUTCMonth() + 1) + '.' +
+        end.getUTCFullYear()
+    );
+}
+
+function formatHoursAndM3(sec, flowRate){
+
+    const seconds = Number(sec) || 0;
+    const hours = seconds / 3600;
+    const m3 = hours * flowRate;
+
+    return (
+        hours.toFixed(2) +
+        ' h = ' +
+        m3.toFixed(2) +
+        ' m3'
+    );
+}
+
+async function fetchLatest(tableName){
+
+    const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/${tableName}?select=*&order=id.desc&limit=1`,
+        {
+            headers: API_HEADERS,
+            cache: 'no-store'
+        }
+    );
+
+    if(!response.ok){
+        throw new Error(
+            `Napaka ${response.status} pri branju ${tableName}`
+        );
+    }
+
+    const data = await response.json();
+
+    return data.length ? data[0] : null;
+}
+
+async function loadData(){
+
+    try{
+
+        const [statusRow, statsRow] = await Promise.all([
+            fetchLatest('pump_status'),
+            fetchLatest('pump_stats')
+        ]);
+
+        if(!statusRow){
+            throw new Error('V tabeli pump_status ni podatkov.');
+        }
+
+        const d = statusRow;
+        const extra = safeParseJson(d.report);
+
+        const stats = statsRow
+            ? safeParseJson(statsRow.stats)
+            : {};
+
+        const updateDate = new Date(d.created_at);
+        const now = new Date();
+
+        const diffHours =
+            (now.getTime() - updateDate.getTime()) /
+            1000 /
+            60 /
+            60;
+
+        const nowSec =
+            Math.floor(now.getTime() / 1000);
+
+        const noRunWarningSec =
+            Number(extra.no_run_warning_sec) || 43200;
+
+        const lastRunEpoch =
+            Number(extra.last_run_epoch) || 0;
+
+        const noRunTooLong =
+            !d.pump_running &&
+            lastRunEpoch > 0 &&
+            (nowSec - lastRunEpoch) >= noRunWarningSec;
+
+        document.getElementById('update_time').textContent =
+            'Posodobljeno: ' +
+            updateDate.toLocaleString('sl-SI');
+
+        // GLAVNI STATUS
+
+        const mainStatus =
+            document.getElementById('main_status');
+
+        if(diffHours >= OFFLINE_AFTER_HOURS){
+
+            mainStatus.textContent =
+                '🔴 VODOVOD OFFLINE';
+
+            mainStatus.className =
+                'bigstatus offline';
+
+        } else if(d.alarm){
+
+            mainStatus.textContent =
+                '⚠ ALARM';
+
+            mainStatus.className =
+                'bigstatus alarm';
+
+        } else if(noRunTooLong){
+
+            mainStatus.textContent =
+                '🟠 VODOVOD NI OK';
+
+            mainStatus.className =
+                'bigstatus warn';
+
+        } else {
+
+            mainStatus.textContent =
+                '🟢 VODOVOD OK';
+
+            mainStatus.className =
+                'bigstatus ok';
+        }
+
+        // TRENUTNO STANJE
+
+        document.getElementById('pump_state').textContent =
+            d.pump_running ? 'ČRPA' : 'MIRUJE';
+
+        document.getElementById('daily_hours').textContent =
+            Number(d.daily_hours || 0).toFixed(2);
+
+        document.getElementById('daily_m3').textContent =
+            Number(d.daily_m3 || 0).toFixed(2);
+
+        document.getElementById('last_event').textContent =
+            d.last_event || '-';
+
+        document.getElementById('last_run_ago').textContent =
+            lastRunEpoch > 0
+            ? formatAgo(nowSec - lastRunEpoch)
+            : '-';
+
+        // PRETOK
+
+        const flowRate =
+            Number(stats.flow_rate_m3_per_h) ||
+            Number(extra.flow_rate_m3_per_h) ||
+            4;
+
+        // ZADNJI 4 VKLOPI
+
+        const runs =
+            Array.isArray(extra.last_runs)
+            ? extra.last_runs
+            : [];
+
+        const runsBox =
+            document.getElementById('last_runs');
+
+        if(!runs.length){
+
+            runsBox.innerHTML =
+                '<div class="small">Ni podatkov.</div>';
+
+        } else {
+
+            runsBox.innerHTML = runs.map(run => `
+                <div class="run">
+                    <span>
+                        ${formatShortRun(run.start, run.end)}
+                    </span>
+                    <b>
+                        ${formatDuration(run.duration_sec)}
+                    </b>
+                </div>
+            `).join('');
+        }
+
+        // ZADNJIH 8 ZAKLJUČENIH DNI
+
+        const days =
+            Array.isArray(stats.last_days)
+            ? stats.last_days
+            : [];
+
+        const daysBox =
+            document.getElementById('last_days');
+
+        if(!days.length){
+
+            daysBox.innerHTML =
+                '<div class="small">Ni podatkov.</div>';
+
+        } else {
+
+            daysBox.innerHTML = days.map(day => `
+                <div class="dayrow">
+                    <span>${formatDayDate(day.date)}</span>
+                    <b>${formatHoursAndM3(day.sec, flowRate)}</b>
+                </div>
+            `).join('');
+        }
+
+        // ZADNJIH 5 ZAKLJUČENIH TEDNOV
+
+        const weeks =
+            Array.isArray(stats.last_weeks)
+            ? stats.last_weeks
+            : [];
+
+        const weeksBox =
+            document.getElementById('last_weeks');
+
+        if(!weeks.length){
+
+            weeksBox.innerHTML =
+                '<div class="small">Ni podatkov.</div>';
+
+        } else {
+
+            weeksBox.innerHTML = weeks.map(week => `
+                <div class="dayrow">
+                    <span>${formatWeekRange(week.week)}</span>
+                    <b>${formatHoursAndM3(week.sec, flowRate)}</b>
+                </div>
+            `).join('');
+        }
+
+        // ZADNJIH 13 ZAKLJUČENIH MESECEV
+
+        const months =
+            Array.isArray(stats.last_months)
+            ? stats.last_months
+            : [];
+
+        const monthsBox =
+            document.getElementById('last_months');
+
+        if(!months.length){
+
+            monthsBox.innerHTML =
+                '<div class="small">Ni podatkov.</div>';
+
+        } else {
+
+            monthsBox.innerHTML = months.map(month => `
+                <div class="dayrow">
+                    <span>${formatMonth(month.month)}</span>
+                    <b>${formatHoursAndM3(month.sec, flowRate)}</b>
+                </div>
+            `).join('');
+        }
+
+        // ZADNJI IZPADI
+
+        const outages =
+            Array.isArray(extra.last_outages)
+            ? extra.last_outages
+            : [];
+
+        const outagesBox =
+            document.getElementById('last_outages');
+
+        if(!outages.length){
+
+            outagesBox.innerHTML =
+                '<div class="small">Ni zabeleženih izpadov.</div>';
+
+        } else {
+
+            outagesBox.innerHTML = outages.map(outage => `
+                <div class="outagerow">
+                    <span>
+                        ${formatShortRun(outage.start, outage.end)}
+                    </span>
+                    <b>
+                        ${formatDuration(outage.duration_sec)}
+                    </b>
+                </div>
+            `).join('');
+        }
 
         // ALARMI
 
-        let alarms = [];
+        const alarms = [];
 
         if(d.continuous_alarm){
-            alarms.push('Pumpa deluje predolgo neprekinjeno.');
+            alarms.push(
+                'Pumpa deluje predolgo neprekinjeno.'
+            );
         }
 
         if(d.no_start_alarm){
-            alarms.push('Pumpa se predolgo ni vklopila.');
+            alarms.push(
+                'Pumpa se predolgo ni vklopila.'
+            );
         }
 
         if(d.daily_runtime_alarm){
-            alarms.push('Pumpa je danes skupaj delovala predolgo.');
+            alarms.push(
+                'Pumpa je danes skupaj delovala predolgo.'
+            );
         }
 
         if(noRunTooLong){
-            alarms.push('Pumpa ni delovala več kot ' +
-                Math.round(noRunWarningSec / 3600) + ' h.');
+            alarms.push(
+                'Pumpa ni delovala več kot ' +
+                Math.round(noRunWarningSec / 3600) +
+                ' h.'
+            );
         }
 
         if(diffHours >= OFFLINE_AFTER_HOURS){
-            alarms.push('Podatki niso bili posodobljeni več kot ' +
-                OFFLINE_AFTER_HOURS + ' h.');
+            alarms.push(
+                'Podatki niso bili posodobljeni več kot ' +
+                OFFLINE_AFTER_HOURS +
+                ' h.'
+            );
         }
 
         document.getElementById('alarm_list').innerHTML =
-            alarms.length ? alarms.join('<br>') : 'Ni aktivnih alarmov.';
+            alarms.length
+            ? alarms.join('<br>')
+            : 'Ni aktivnih alarmov.';
 
-    } catch(err){
+    } catch(error){
 
-        document.getElementById('main_status').innerHTML =
+        document.getElementById('main_status').textContent =
             '🔴 NAPAKA PRI BRANJU';
 
         document.getElementById('main_status').className =
             'bigstatus offline';
 
-        document.getElementById('update_time').innerHTML =
-            String(err);
+        document.getElementById('update_time').textContent =
+            error.message || String(error);
+
+        console.error(error);
     }
 }
 
