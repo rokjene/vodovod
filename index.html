@@ -411,6 +411,29 @@ async function loadData(){
 
         const data = await response.json();
 
+
+
+const statsResponse = await fetch(
+    `${SUPABASE_URL}/rest/v1/pump_stats?select=*&order=id.desc&limit=1`,
+    {
+        headers:{
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`
+        }
+    }
+);
+
+const statsData = await statsResponse.json();
+
+const stats =
+    statsData.length
+    ? JSON.parse(statsData[0].stats)
+    : {};
+
+
+
+        
+
         if(!data.length){
             return;
         }
