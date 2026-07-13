@@ -706,16 +706,14 @@ async function loadData(){
 
         } else {
 
-            outagesBox.innerHTML = outages.map(outage => `
-                <div class="outagerow">
-                    <span>
-                        ${formatShortRun(outage.start, outage.end)}
-                    </span>
-                    <b>
-                        ${formatDuration(outage.duration_sec)}
-                    </b>
-                </div>
-            `).join('');
+          outagesBox.innerHTML = outages.map(outage => `
+    <div class="outagerow">
+        <span>
+            ${new Date(outage.start * 1000).toLocaleString('sl-SI')}
+        </span>
+        <b>IZPAD</b>
+    </div>
+`).join('');
         }
 
         // ALARMI
